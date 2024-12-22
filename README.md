@@ -14,7 +14,7 @@ curl -fsSL -o get-platformio.py https://raw.githubusercontent.com/platformio/pla
 2. Install zed-platformio package
 
 ```bash
-go install github.com/igor-mauricio/zed-platformio
+go install github.com/igor-mauricio/zed-platformio@latest
 ```
 
 3. Run the lsp command to update the files in clangd
