@@ -1,61 +1,72 @@
 import subprocess
 import json
+import sys
+from dataclasses import dataclass
+from typing import Optional
 
-def main():
-    output = run_pio_command()
-    if output:
-        json_data = extract_json(output)
-        if json_data:
-            create_clangd_file(json_data)
-        else:
-            print("No JSON data found in the output.")
-    else:
-        print("Failed to run PlatformIO command.")
+@dataclass
+class Error:
+    message: str = ""
+    data: dict|None = None
 
-def run_pio_command():
-    command = ["pio", "-f", "-c", "vim", "run", "-t", "idedata", "--environment", "lilygo-t-display-s3"]
+def main() -> int:
+    if len(sys.argv) < 2:
+        print("Usage: python3 clangGen.py <environment>")
+        return 1
+    environment = sys.argv[1]
+    project_info, err = get_project_info(environment)
+    if err != None:
+        print(err.message)
+        return 1
+    json_data, err = json_from_string(project_info)
+    if err != None:
+        print("Error parsing project information.")
+        return 1
+    err = create_clangd_file(json_data)
+    if err != None:
+        print(err.message)
+        return 1
+    print(".clangd file created successfully.")
+    return 0
+
+def get_project_info(environment: str) -> tuple[str, Optional[Error]]:
+    cmd = ["pio", "--version"]
     try:
-        result = subprocess.run(command, capture_output=True, text=True, check=True)
-        return result.stdout
-    except subprocess.CalledProcessError as e:
-        print("Error executing PlatformIO command:")
-        print(e.stderr)
-        return None
-
-def extract_json(output: str):
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except:
+        return "", Error("Please install PlatformIO and make sure it is in the PATH.")
+    command = ["pio", "-f", "-c", "vim", "run", "-t", "idedata", "--environment", environment]
     try:
-        start = output.find('{')
-        end = output.rfind('}')
-        if start != -1 and end != -1:
-            json_string = output[start:end+1]
-            return json.loads(json_string)
-    except json.JSONDecodeError as e:
-        print(f"Error parsing JSON: {e}")
-    return None
+        result = subprocess.run(command, capture_output=True, text=True, check=True).stdout
+    except:
+        return "", Error("Error executing PlatformIO command.\nCheck if the \"platformio.ini\" file exists and the environment name is correct.")
+    return result, None
 
-def create_clangd_file(data: dict):
+def json_from_string(text: str) -> tuple[dict, Optional[Error]]:
+    start = text.find('{')
+    end = text.rfind('}')
+    if start == -1 or end == -1:
+        return {}, Error("No JSON data found in the text.")
+    json_string:dict
+    try:
+       json_string = json.loads(text[start:end+1])
+    except:
+        return {}, Error("Error parsing JSON.")
+    return json_string, None
+
+def create_clangd_file(data: dict) -> Optional[Error]:
     includes_build = data.get("includes", {}).get("build", [])
     includes_compatlib = data.get("includes", {}).get("compatlib", [])
-    # includes_toolchain = data.get("includes", {}).get("toolchain", [])
-    # compile_flags = data.get("cxx_flags", [])
-    # compiler_path = data.get("cxx_path", "")
-
-    with open(".clangd", "w") as f:
-        f.write("CompileFlags:\n")
-        f.write("  Add:\n    - -ferror-limit=0\n")
-
-        # for flag in compile_flags:
-        #     f.write(f"    - {flag}\n")
-        for include in includes_build:
-            f.write(f"    - -I{include}\n")
-        for include in includes_compatlib:
-            f.write(f"    - -I{include}\n")
-        # for include in includes_toolchain:
-        #     f.write(f"    - -I{include}\n")
-        # if compiler_path:
-        #     f.write(f"    - --gcc-toolchain={compiler_path}\n")
-
-        f.write("""
+    try:
+        f = open(".clangd", "w")
+    except:
+        return Error("Cannot open .clangd file for writing. Make sure you have write permissions.")
+    f.write("CompileFlags:\n  Add:\n    - -ferror-limit=0\n")
+    for include in includes_build:
+        f.write(f"    - -I{include}\n")
+    for include in includes_compatlib:
+        f.write(f"    - -I{include}\n")
+    f.write("""
 Diagnostics:
   Suppress:
     - unused-includes
@@ -77,9 +88,7 @@ Diagnostics:
     - -Wstring-plus-int
     - typecheck_convert_pointer_int
     - typecheck_nonviable_condition\n""")
-    print(".clangd file created successfully.")
-
-
+    return None
 
 if __name__ == "__main__":
-    main()
+    exit(main())
