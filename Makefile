@@ -9,6 +9,19 @@ endif
 lsp:
 	$(PYTHON) clangGen.py $(PIO_ENV)
 
+init:
+	pio project init
+	@if [ ! -f src/main.cpp ]; then \
+		echo '#include <Arduino.h>' > src/main.cpp; \
+		echo '' >> src/main.cpp; \
+		echo 'void setup() {' >> src/main.cpp; \
+		echo '}' >> src/main.cpp; \
+		echo '' >> src/main.cpp; \
+		echo 'void loop() {' >> src/main.cpp; \
+		echo '}' >> src/main.cpp; \
+		echo "Created src/main.cpp"; \
+	fi
+
 build:
 	pio run --environment $(PIO_ENV)
 
