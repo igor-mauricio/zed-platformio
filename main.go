@@ -10,37 +10,24 @@ import (
 
 func main() {
 	var willMonitor bool
-	environment := "lilygo-t-display-s3"
-	test_env := "native"
-
-	home := &cobra.Command{
-		Use:   "home",
-		Short: "Open Platformio Home",
-		Long:  `Open Platformio Home in the default web browser.`,
-		Args:  cobra.MinimumNArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			pioCmd := exec.Command("platformio", "home")
-			pioCmd.Stdout = os.Stdout
-			pioCmd.Stderr = os.Stderr
-			err := pioCmd.Run()
-			if err != nil {
-				fmt.Println("Error opening Platformio Home: ", err)
-				return
-			}
-		},
-	}
+	defaultTestEnv := "native"
 
 	upload := &cobra.Command{
-		Use:   "upload",
+		Use:   "upload [environment]",
 		Short: "Upload firmware to the board",
-		Long:  `Upload firmware to the selected board. Configure the board at zed-platformio.json.`,
-		Args:  cobra.MinimumNArgs(0),
+		Long:  `Upload firmware to the selected board. Defaults to lilygo-t-display-s3 if no environment is specified.`,
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
+			env := ""
+			if len(args) > 0 {
+				env = args[0]
+			}
+
 			var pioCmd *exec.Cmd
 			if willMonitor {
-				pioCmd = exec.Command("platformio", "run", "--target", "upload", "--target", "monitor", "--environment", environment)
+				pioCmd = exec.Command("platformio", "run", "--target", "upload", "--target", "monitor", "--environment", env)
 			} else {
-				pioCmd = exec.Command("platformio", "run", "--target", "upload", "--environment", environment)
+				pioCmd = exec.Command("platformio", "run", "--target", "upload", "--environment", env)
 			}
 			pioCmd.Stdout = os.Stdout
 			pioCmd.Stderr = os.Stderr
@@ -53,31 +40,18 @@ func main() {
 		},
 	}
 
-	monitor := &cobra.Command{
-		Use:   "monitor",
-		Short: "Monitor the serial port",
-		Long:  `Monitor the serial port of the connected board.`,
-		Args:  cobra.MinimumNArgs(0),
-		Run: func(cmd *cobra.Command, args []string) {
-			pioCmd := exec.Command("pio", "device", "monitor")
-			pioCmd.Stdout = os.Stdout
-			pioCmd.Stderr = os.Stderr
-			pioCmd.Stdin = os.Stdin
-			err := pioCmd.Run()
-			if err != nil {
-				fmt.Println("Could not monitor the serial port: ", err)
-				return
-			}
-		},
-	}
-
 	test := &cobra.Command{
-		Use:   "test",
+		Use:   "test [environment]",
 		Short: "Run test suite",
-		Long:  `Run the test suite for the selected environment.`,
-		Args:  cobra.MinimumNArgs(0),
+		Long:  `Run the test suite for the selected environment. Defaults to native if no environment is specified.`,
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			pioCmd := exec.Command("platformio", "test", "--environment", test_env)
+			env := defaultTestEnv
+			if len(args) > 0 {
+				env = args[0]
+			}
+
+			pioCmd := exec.Command("platformio", "test", "--environment", env)
 			pioCmd.Stdout = os.Stdout
 			pioCmd.Stderr = os.Stderr
 			err := pioCmd.Run()
@@ -89,12 +63,17 @@ func main() {
 	}
 
 	build := &cobra.Command{
-		Use:   "build",
+		Use:   "build [environment]",
 		Short: "Build the project",
-		Long:  `Build the project for the selected environment.`,
-		Args:  cobra.MinimumNArgs(0),
+		Long:  `Build the project for the selected environment. Defaults to lilygo-t-display-s3 if no environment is specified.`,
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			pioCmd := exec.Command("platformio", "run", "--environment", environment)
+			env := ""
+			if len(args) > 0 {
+				env = args[0]
+			}
+
+			pioCmd := exec.Command("platformio", "run", "--environment", env)
 			pioCmd.Stdout = os.Stdout
 			pioCmd.Stderr = os.Stderr
 			err := pioCmd.Run()
@@ -106,17 +85,57 @@ func main() {
 	}
 
 	lsp := &cobra.Command{
-		Use:   "lsp",
+		Use:   "lsp [environment]",
 		Short: "Configure Clangd for LSP",
-		Long:  `Configure Clangd for LSP.`,
-		Args:  cobra.MinimumNArgs(0),
+		Long:  `Configure Clangd for LSP. Defaults to lilygo-t-display-s3 if no environment is specified.`,
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			err := lsp(environment)
+			env := ""
+			if len(args) > 0 {
+				env = args[0]
+			}
+
+			err := lsp(env)
 			if err != nil {
 				fmt.Println("Error configuring Clangd for LSP: ", err)
 				return
 			}
 			fmt.Println(".clangd file created successfully.")
+		},
+	}
+
+	home := &cobra.Command{
+		Use:   "home",
+		Short: "Open Platformio Home",
+		Long:  `Open Platformio Home in the default web browser.`,
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			pioCmd := exec.Command("platformio", "home")
+			pioCmd.Stdout = os.Stdout
+			pioCmd.Stderr = os.Stderr
+			err := pioCmd.Run()
+			if err != nil {
+				fmt.Println("Error opening Platformio Home: ", err)
+				return
+			}
+		},
+	}
+
+	monitor := &cobra.Command{
+		Use:   "monitor",
+		Short: "Monitor the serial port",
+		Long:  `Monitor the serial port of the connected board.`,
+		Args:  cobra.NoArgs,
+		Run: func(cmd *cobra.Command, args []string) {
+			pioCmd := exec.Command("pio", "device", "monitor")
+			pioCmd.Stdout = os.Stdout
+			pioCmd.Stderr = os.Stderr
+			pioCmd.Stdin = os.Stdin
+			err := pioCmd.Run()
+			if err != nil {
+				fmt.Println("Could not monitor the serial port: ", err)
+				return
+			}
 		},
 	}
 
