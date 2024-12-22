@@ -39,7 +39,9 @@ def get_project_info(environment: str) -> tuple[str, Optional[Error]]:
     try:
         result = subprocess.run(command, capture_output=True, text=True, check=True).stdout
     except:
-        return "", Error("Error executing PlatformIO command.\nCheck if the \"platformio.ini\" file exists and the environment name is correct.")
+        return "", Error("Error executing PlatformIO command.\n" \
+            "Check if the \"platformio.ini\" file exists and the environment name is correct.\n" \
+            "Create a new project using \"pio init --ide vim\".")
     return result, None
 
 def json_from_string(text: str) -> tuple[dict, Optional[Error]]:
@@ -61,7 +63,9 @@ def create_clangd_file(data: dict) -> Optional[Error]:
         f = open(".clangd", "w")
     except:
         return Error("Cannot open .clangd file for writing. Make sure you have write permissions.")
-    f.write("CompileFlags:\n  Add:\n    - -ferror-limit=0\n")
+    f.write("CompileFlags:\n" \
+        "  Add:\n" \
+        "    - -ferror-limit=0\n")
     for include in includes_build:
         f.write(f"    - -I{include}\n")
     for include in includes_compatlib:
