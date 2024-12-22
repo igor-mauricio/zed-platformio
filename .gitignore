@@ -1,3 +1,5 @@
 .ropeproject
 .clangd
 .vscode
+.pio
+build/*
